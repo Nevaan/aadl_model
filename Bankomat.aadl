@@ -1,0 +1,150 @@
+package Bankomat
+public
+	
+	System AtmSystem	
+	end AtmSystem;
+	
+	
+	system implementation AtmSystem.with_devices
+		subcomponents 
+			this_czytnik_kart: device CzytnikKart;
+			this_modul_gotowkowy: device ModulGotowkowy;
+			this_drukarka: device Drukarka;
+			this_sejf: device Sejf;
+			this_klawiatura: device Klawiatura;
+			this_wyswietlacz: device Wyswietlacz;
+			
+			this_controller: process Controller;
+			
+			this_bus: bus HwConnection.impl;
+			this_processor: processor MainProcessor.impl;
+			
+		connections
+			-- Event connections
+			czytnik_out_conn: port this_czytnik_kart.wlozono_karte -> this_controller.czytnik_in;
+			czytnik_in_conn: port this_controller.czytnik_out -> this_czytnik_kart.zatrzymaj_karte;
+			drukarka_conn: port this_controller.drukarka_out -> this_drukarka.drukuj;
+			sejf_in_conn: port this_sejf.umieszczono_gotowke -> this_controller.sejf_in;
+			sejf_out_conn: port this_controller.sejf_out -> this_sejf.wydaj_gotowke;
+			modul_gotowkowy_in_conn: port this_modul_gotowkowy.gotowka_pobrana -> this_controller.modul_gotowkowy_in;
+			modul_gotowkowy_out_conn: port this_controller.modul_gotowkowy_out -> this_modul_gotowkowy.pobierz_gotowke;
+			
+			-- Data connections
+			wyswietlacz_conn: port this_controller.obraz_out -> this_wyswietlacz.obraz_input;			
+			klawiatura_conn: port this_klawiatura.key_input -> this_controller.key_input;
+			
+			-- Bus connections
+			bus_czytnik_kart: bus access this_bus -> this_czytnik_kart.bus_access;
+			bus_modul_gotowkowy: bus access this_bus -> this_modul_gotowkowy.bus_access;
+			bus_drukarka: bus access this_bus -> this_drukarka.bus_access;
+			bus_sejf: bus access this_bus -> this_sejf.bus_access;
+			bus_klawiatura: bus access this_bus -> this_klawiatura.bus_access;
+			bus_wyswietlacz: bus access this_bus -> this_wyswietlacz.bus_access; 
+			bus_processor: bus access this_bus -> this_processor.bus_access; 
+			 
+	end AtmSystem.with_devices;
+	
+	process Controller 	
+		features
+			-- Event ports
+			czytnik_in: in event port;
+			sejf_in: in event port;
+			czytnik_out: out event port;
+			drukarka_out: out event port;
+			sejf_out: out event port;
+			modul_gotowkowy_in: in event port;
+			modul_gotowkowy_out: out event port;
+			
+			-- Data ports
+			key_input: in data port;
+			obraz_out: out data port;	
+	end Controller;
+	
+	process implementation Controller.with_threads		
+	end Controller.with_threads;
+	
+	processor MainProcessor		
+		features
+			bus_access: requires bus access HwConnection;
+	end MainProcessor;
+	
+	processor implementation MainProcessor.impl
+		subcomponents
+			this_memory: memory RAM;
+	end MainProcessor.impl;
+	
+	memory RAM		
+	end RAM;
+	
+	bus HwConnection		
+	end HwConnection;
+	
+	bus implementation HwConnection.impl
+		
+	end HwConnection.impl;
+	
+	-- Devices
+	device CzytnikKart		
+		features
+			wlozono_karte: out event port;
+			zatrzymaj_karte: in event port;
+			
+			bus_access: requires bus access HwConnection;
+	end CzytnikKart;
+	
+	device implementation CzytnikKart.impl		
+	end CzytnikKart.impl;
+	
+	device ModulGotowkowy	
+		features
+			pobierz_gotowke: in event port;
+			gotowka_pobrana: out event port;
+			
+			bus_access: requires bus access HwConnection;			
+	end ModulGotowkowy;
+	
+	device implementation ModulGotowkowy.impl		
+	end ModulGotowkowy.impl;
+	
+	device Drukarka		
+		features
+			drukuj: in event port;
+			
+			bus_access: requires bus access HwConnection;			
+	end Drukarka;
+	
+	device implementation Drukarka.impl		
+	end Drukarka.impl;
+	
+	device Sejf		
+		features
+			umieszczono_gotowke: out event port;
+			wydaj_gotowke: in event port;
+			
+			bus_access: requires bus access HwConnection;			
+	end Sejf;
+	
+	device implementation Sejf.impl		
+	end Sejf.impl;
+	
+	device Klawiatura	
+		features
+			key_input: out data port;
+			
+			bus_access: requires bus access HwConnection;			
+	end Klawiatura;
+	
+	device implementation Klawiatura.impl		
+	end Klawiatura.impl;
+	
+	device Wyswietlacz		
+		features
+			obraz_input: in data port;
+			
+			bus_access: requires bus access HwConnection;
+	end Wyswietlacz;
+	
+	device implementation Wyswietlacz.impl
+	end Wyswietlacz.impl;
+		
+end Bankomat;
