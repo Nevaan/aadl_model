@@ -1,9 +1,9 @@
 package Bankomat
 public
+	with base_types;
 	
 	System AtmSystem	
-	end AtmSystem;
-	
+	end AtmSystem;	
 	
 	system implementation AtmSystem.with_devices
 		subcomponents 
@@ -14,7 +14,7 @@ public
 			this_klawiatura: device Klawiatura;
 			this_wyswietlacz: device Wyswietlacz;
 			
-			this_controller: process Controller;
+			this_controller: process Controller.with_threads;
 			
 			this_bus: bus HwConnection.impl;
 			this_processor: processor MainProcessor.impl;
@@ -60,8 +60,99 @@ public
 			obraz_out: out data port;	
 	end Controller;
 	
-	process implementation Controller.with_threads		
+	process implementation Controller.with_threads	
+		subcomponents
+			this_controlling_thread: thread controlling_thread.impl;
+			
+			this_read_card_insert: thread read_card_insert.impl;
+			this_read_modul_input: thread read_modul_input.impl;
+			this_sejf_thread: thread sejf_thread.impl;
+			this_klawiatura_thread: thread klawiatura_input.impl;
+			
+		connections
+			read_card_conn: port czytnik_in -> this_read_card_insert.czytnik_in;
+			modul_in_conn: port modul_gotowkowy_in -> this_read_modul_input.modul_in;
+			sejf_in_conn: port sejf_in -> this_sejf_thread.sejf_in;
+			klawiatura_conn: port key_input -> this_klawiatura_thread.keyboard_in;
+			
+			read_card_control_conn: port this_read_card_insert.czytnik_out -> this_controlling_thread.czytnik_in;
+			modul_in_control_conn: port this_read_modul_input.modul_out -> this_controlling_thread.modul_in;
+			sejf_in_control_conn: port this_sejf_thread.sejf_out -> this_controlling_thread.sejf_in;
+			
+			klawiatura_control_conn: port this_klawiatura_thread.keyboard_out -> this_controlling_thread.keyboard_in;
+			
+			wyswietlacz_conn: port this_controlling_thread.wyswietlacz_out -> obraz_out;
+			czytnik_out_conn: port this_controlling_thread.czytnik_out -> czytnik_out;
+			drukarka_out_conn: port this_controlling_thread.drukarka_out -> drukarka_out;
+			sejf_out_conn: port this_controlling_thread.sejf_out -> sejf_out;
+			modul_out_conn: port this_controlling_thread.modul_out -> modul_gotowkowy_out;
+			
 	end Controller.with_threads;
+	
+	
+	-- Threads 
+	
+	thread controlling_thread 
+		features
+			czytnik_in: in event port;
+			modul_in: in event port;
+			sejf_in: in event port;
+			keyboard_in: in data port; -- example
+			
+			wyswietlacz_out: out data port;	
+			czytnik_out: out event port;
+			drukarka_out: out event port;
+			sejf_out: out event port;
+			modul_out: out event port;
+			
+			
+	end controlling_thread;
+	
+	thread implementation controlling_thread.impl
+	end controlling_thread.impl;
+	
+	thread read_card_insert		
+		features
+			czytnik_in: in event port;
+			czytnik_out: out event port;
+	end read_card_insert;
+	
+	thread implementation read_card_insert.impl		
+
+	end read_card_insert.impl;
+	
+	thread read_modul_input
+		features
+			modul_in: in event port;
+			modul_out: out event port;
+			
+	end read_modul_input;
+	
+	thread implementation read_modul_input.impl
+	end read_modul_input.impl;
+	
+	thread sejf_thread
+		features
+			sejf_in: in event port;
+			sejf_out: out event port;
+			
+	end sejf_thread;
+	
+	thread implementation sejf_thread.impl
+	end sejf_thread.impl;
+	
+	thread klawiatura_input
+		features 
+			keyboard_in: in data port;
+			keyboard_out: out data port;
+			
+	end klawiatura_input;
+	
+	thread implementation klawiatura_input.impl
+	
+	end klawiatura_input.impl;
+	
+	-- Components
 	
 	processor MainProcessor		
 		features
