@@ -50,75 +50,55 @@ public
 			czytnik_in: in event port;
 			sejf_in: in event port;
 			czytnik_out: out event port;
-			drukarka_out: out event port;
 			sejf_out: out event port;
 			modul_gotowkowy_in: in event port;
 			modul_gotowkowy_out: out event port;
 			
 			-- Data ports
-			key_input: in data port;
-			obraz_out: out data port;	
+			key_input: in data port Base_Types::Character;
+			obraz_out: out data port Base_Types::String;	
+			drukarka_out: out data port Base_Types::String;
+			
 	end Controller;
 	
 	process implementation Controller.with_threads	
 		subcomponents
-			this_controlling_thread: thread controlling_thread.impl;
 			
 			this_read_card_insert: thread read_card_insert.impl;
 			this_read_modul_input: thread read_modul_input.impl;
 			this_sejf_thread: thread sejf_thread.impl;
 			this_klawiatura_thread: thread klawiatura_input.impl;
+			this_obraz_output: thread obraz_output.impl;
+			this_drukarka_out: thread drukarka_output.impl;
 			
 		connections
-			read_card_conn: port czytnik_in -> this_read_card_insert.czytnik_in;
+			
+			read_card_in_conn: port czytnik_in -> this_read_card_insert.czytnik_in;
 			modul_in_conn: port modul_gotowkowy_in -> this_read_modul_input.modul_in;
 			sejf_in_conn: port sejf_in -> this_sejf_thread.sejf_in;
 			klawiatura_conn: port key_input -> this_klawiatura_thread.keyboard_in;
 			
-			read_card_control_conn: port this_read_card_insert.czytnik_out -> this_controlling_thread.czytnik_in;
-			modul_in_control_conn: port this_read_modul_input.modul_out -> this_controlling_thread.modul_in;
-			sejf_in_control_conn: port this_sejf_thread.sejf_out -> this_controlling_thread.sejf_in;
-			
-			klawiatura_control_conn: port this_klawiatura_thread.keyboard_out -> this_controlling_thread.keyboard_in;
-			
-			wyswietlacz_conn: port this_controlling_thread.wyswietlacz_out -> obraz_out;
-			czytnik_out_conn: port this_controlling_thread.czytnik_out -> czytnik_out;
-			drukarka_out_conn: port this_controlling_thread.drukarka_out -> drukarka_out;
-			sejf_out_conn: port this_controlling_thread.sejf_out -> sejf_out;
-			modul_out_conn: port this_controlling_thread.modul_out -> modul_gotowkowy_out;
+			read_card_out_conn: port this_read_card_insert.czytnik_out -> czytnik_out;
+			modul_out_conn: port this_read_modul_input.modul_out -> modul_gotowkowy_out;
+			sejf_out_conn: port this_sejf_thread.sejf_out -> sejf_out;
+			obraz_output_conn: port this_obraz_output.obraz_out -> obraz_out;
+			drukarka_output_conn: port this_drukarka_out.drukarka_out -> drukarka_out;
 			
 	end Controller.with_threads;
-	
-	
-	-- Threads 
-	
-	thread controlling_thread 
-		features
-			czytnik_in: in event port;
-			modul_in: in event port;
-			sejf_in: in event port;
-			keyboard_in: in data port; -- example
-			
-			wyswietlacz_out: out data port;	
-			czytnik_out: out event port;
-			drukarka_out: out event port;
-			sejf_out: out event port;
-			modul_out: out event port;
-			
-			
-	end controlling_thread;
-	
-	thread implementation controlling_thread.impl
-	end controlling_thread.impl;
-	
+		
 	thread read_card_insert		
 		features
 			czytnik_in: in event port;
 			czytnik_out: out event port;
+			
 	end read_card_insert;
 	
 	thread implementation read_card_insert.impl		
-
+		calls
+			Main: {
+				czytaj_karte: subprogram CzytajKarte;
+				wydaj_karte: subprogram WydajKarte;
+			};
 	end read_card_insert.impl;
 	
 	thread read_modul_input
@@ -129,6 +109,11 @@ public
 	end read_modul_input;
 	
 	thread implementation read_modul_input.impl
+		calls
+			Main: {
+				wyplata: subprogram Wyplata;
+				wplata: subprogram Wplata;
+			};
 	end read_modul_input.impl;
 	
 	thread sejf_thread
@@ -139,29 +124,164 @@ public
 	end sejf_thread;
 	
 	thread implementation sejf_thread.impl
+		calls
+			Main: {
+				wydaj_kwote: subprogram WydajKwote;
+				stan_kasy: subprogram PobierzStanSejfu;
+			};	
 	end sejf_thread.impl;
 	
 	thread klawiatura_input
 		features 
-			keyboard_in: in data port;
-			keyboard_out: out data port;
-			
+			keyboard_in: in data port Base_Types::Character;						
 	end klawiatura_input;
 	
 	thread implementation klawiatura_input.impl
-	
+		calls
+			Main: {
+				read_key_input: subprogram ReadKeyInput;
+			};
+		connections
+			input_conn: parameter keyboard_in -> read_key_input.key_input;
 	end klawiatura_input.impl;
+	
+	thread obraz_output
+		features
+			obraz_out: out data port Base_Types::String;
+			
+	end obraz_output;
+	
+	thread implementation obraz_output.impl
+		calls
+			Main: {
+				get_content: subprogram GetObraz;
+			};
+		connections
+			data_conn: parameter obraz_out -> get_content.obraz_out;
+	end obraz_output.impl;
+	
+	thread drukarka_output
+		features
+			drukarka_out: out data port Base_Types::String;			
+	end drukarka_output;
+	
+	thread implementation drukarka_output.impl
+		calls
+			Main: {
+				send_text: subprogram SendText;
+			};
+		connections
+			print_conn: parameter drukarka_out -> send_text.text_out;
+	end drukarka_output.impl;
+	
+	-- Subprograms
+	subprogram GetObraz		
+		features
+			obraz_out : out parameter Base_Types::String;
+	end GetObraz;
+	
+	subprogram implementation GetObraz.impl		
+		properties
+			Source_Language        => (C);
+			Source_Name            => "get_content";
+			source_text  		   => ("bankomat.c"); 		
+	end GetObraz.impl;
+	
+	subprogram SendText
+		features
+			text_out: out parameter Base_Types::String;
+	end SendText;
+	subprogram implementation SendText.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "send_text";
+			source_text  		   => ("bankomat.c"); 
+	end SendText.impl;
+		
+	subprogram ReadKeyInput	
+		features
+			key_input: in parameter Base_Types::Character;	
+	end ReadKeyInput;	
+	subprogram implementation ReadKeyInput.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "read_key_input";
+			source_text  		   => ("winda.c");	
+	end ReadKeyInput.impl;	
+	
+	subprogram WydajKwote	
+	end WydajKwote;
+	
+	subprogram implementation WydajKwote.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "wydaj_kwote";
+			source_text  		   => ("winda.c");		
+	end WydajKwote.impl;
+	
+	
+	subprogram PobierzStanSejfu		
+	end PobierzStanSejfu;
+	
+	subprogram implementation PobierzStanSejfu.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "pobierz_stan_konta";
+			source_text  		   => ("winda.c");			
+	end PobierzStanSejfu.impl;
+	
+	subprogram Wplata		
+	end Wplata;
+	
+	subprogram implementation Wplata.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "wplata_gotowki";
+			source_text  		   => ("winda.c");			
+	end Wplata.impl;	
+	
+	subprogram Wyplata		
+	end Wyplata;
+	
+	subprogram implementation Wyplata.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "wyplata_gotowki";
+			source_text  		   => ("winda.c");			
+	end Wyplata.impl;	
+	
+	subprogram CzytajKarte		
+	end CzytajKarte;
+	
+	subprogram implementation CzytajKarte.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "czytaj_karte";
+			source_text  		   => ("winda.c");			
+	end CzytajKarte.impl;	
+	
+	subprogram WydajKarte		
+	end WydajKarte;
+	
+	subprogram implementation WydajKarte.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "wydaj_karte";
+			source_text  		   => ("winda.c");			
+	end WydajKarte.impl;	
 	
 	-- Components
 	
 	processor MainProcessor		
 		features
 			bus_access: requires bus access HwConnection;
+			
 	end MainProcessor;
 	
 	processor implementation MainProcessor.impl
 		subcomponents
 			this_memory: memory RAM;
+			
 	end MainProcessor.impl;
 	
 	memory RAM		
@@ -181,6 +301,7 @@ public
 			zatrzymaj_karte: in event port;
 			
 			bus_access: requires bus access HwConnection;
+			
 	end CzytnikKart;
 	
 	device implementation CzytnikKart.impl		
@@ -191,7 +312,8 @@ public
 			pobierz_gotowke: in event port;
 			gotowka_pobrana: out event port;
 			
-			bus_access: requires bus access HwConnection;			
+			bus_access: requires bus access HwConnection;
+						
 	end ModulGotowkowy;
 	
 	device implementation ModulGotowkowy.impl		
@@ -201,7 +323,8 @@ public
 		features
 			drukuj: in event port;
 			
-			bus_access: requires bus access HwConnection;			
+			bus_access: requires bus access HwConnection;	
+					
 	end Drukarka;
 	
 	device implementation Drukarka.impl		
@@ -212,7 +335,8 @@ public
 			umieszczono_gotowke: out event port;
 			wydaj_gotowke: in event port;
 			
-			bus_access: requires bus access HwConnection;			
+			bus_access: requires bus access HwConnection;	
+					
 	end Sejf;
 	
 	device implementation Sejf.impl		
@@ -220,9 +344,10 @@ public
 	
 	device Klawiatura	
 		features
-			key_input: out data port;
+			key_input: out data port Base_Types::Character;
 			
-			bus_access: requires bus access HwConnection;			
+			bus_access: requires bus access HwConnection;
+						
 	end Klawiatura;
 	
 	device implementation Klawiatura.impl		
@@ -230,9 +355,10 @@ public
 	
 	device Wyswietlacz		
 		features
-			obraz_input: in data port;
+			obraz_input: in data port Base_Types::String;
 			
 			bus_access: requires bus access HwConnection;
+			
 	end Wyswietlacz;
 	
 	device implementation Wyswietlacz.impl
