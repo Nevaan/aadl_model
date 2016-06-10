@@ -13,6 +13,7 @@ public
 			this_sejf: device Sejf;
 			this_klawiatura: device Klawiatura;
 			this_wyswietlacz: device Wyswietlacz;
+			this_modul_lacznosci: device Modul_Lacznosci;
 			
 			this_controller: process Controller.with_threads;
 			
@@ -32,6 +33,9 @@ public
 			-- Data connections
 			wyswietlacz_conn: port this_controller.obraz_out -> this_wyswietlacz.obraz_input;			
 			klawiatura_conn: port this_klawiatura.key_input -> this_controller.key_input;
+			modul_lacznosci_dane_karty: port this_controller.dane_karty_out -> this_modul_lacznosci.dane_karty;
+			modul_lacznosci_dane_konta: port this_modul_lacznosci.dane_konta ->this_controller.dane_konta_in;
+			
 			
 			-- Bus connections
 			bus_czytnik_kart: bus access this_bus -> this_czytnik_kart.bus_access;
@@ -41,7 +45,8 @@ public
 			bus_klawiatura: bus access this_bus -> this_klawiatura.bus_access;
 			bus_wyswietlacz: bus access this_bus -> this_wyswietlacz.bus_access; 
 			bus_processor: bus access this_bus -> this_processor.bus_access; 
-			 
+			bus_modul_lacznosci: bus access this_bus -> this_modul_lacznosci.bus_access;
+			
 	end AtmSystem.with_devices;
 	
 	process Controller 	
@@ -58,6 +63,8 @@ public
 			key_input: in data port Base_Types::Character;
 			obraz_out: out data port Base_Types::String;	
 			drukarka_out: out data port Base_Types::String;
+			dane_karty_out: out data port;
+			dane_konta_in: in data port;
 			
 	end Controller;
 	
@@ -70,6 +77,7 @@ public
 			this_klawiatura_thread: thread klawiatura_input.impl;
 			this_obraz_output: thread obraz_output.impl;
 			this_drukarka_out: thread drukarka_output.impl;
+			this_lacznosc_thread: thread  lacznosc_thread.impl;
 			
 		connections
 			
@@ -83,6 +91,9 @@ public
 			sejf_out_conn: port this_sejf_thread.sejf_out -> sejf_out;
 			obraz_output_conn: port this_obraz_output.obraz_out -> obraz_out;
 			drukarka_output_conn: port this_drukarka_out.drukarka_out -> drukarka_out;
+			
+			lacznosc_in_conn: port dane_konta_in -> this_lacznosc_thread.dane_konta_in;
+			lacznosc_out_conn: port this_lacznosc_thread.dane_karty_out -> dane_karty_out;
 			
 	end Controller.with_threads;
 		
@@ -174,7 +185,50 @@ public
 			print_conn: parameter drukarka_out -> send_text.text_out;
 	end drukarka_output.impl;
 	
+	thread lacznosc_thread
+		features
+			dane_konta_in: in data port;
+			dane_karty_out: out data port;
+	end lacznosc_thread;
+	
+	thread implementation lacznosc_thread.impl
+		calls
+			Main: {
+				get_dane_konta: subprogram GetDaneKonta;
+				send_dane_karty: subprogram SendDaneKarty;
+			};
+		connections
+			dane_karty: parameter dane_karty_out ->  send_dane_karty.dane_karty ;
+			dane_konta: parameter get_dane_konta.dane_konta -> dane_konta_in ;
+	end lacznosc_thread.impl;
+	
 	-- Subprograms
+	subprogram GetDaneKonta	
+		features
+			dane_konta: out parameter;
+	end GetDaneKonta;
+	
+	
+	subprogram implementation GetDaneKonta.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "get_dane_konta";
+			source_text  		   => ("bankomat.c"); 
+	end GetDaneKonta.impl;
+	
+	subprogram SendDaneKarty
+		features
+			dane_karty: in parameter;			
+	end SendDaneKarty;
+	
+	subprogram implementation SendDaneKarty.impl
+		properties
+			Source_Language        => (C);
+			Source_Name            => "send_dane_karty";
+			source_text  		   => ("bankomat.c"); 
+		
+	end SendDaneKarty.impl;
+	
 	subprogram GetObraz		
 		features
 			obraz_out : out parameter Base_Types::String;
@@ -323,8 +377,7 @@ public
 		features
 			drukuj: in event port;
 			
-			bus_access: requires bus access HwConnection;	
-					
+			bus_access: requires bus access HwConnection;						
 	end Drukarka;
 	
 	device implementation Drukarka.impl		
@@ -335,8 +388,7 @@ public
 			umieszczono_gotowke: out event port;
 			wydaj_gotowke: in event port;
 			
-			bus_access: requires bus access HwConnection;	
-					
+			bus_access: requires bus access HwConnection;						
 	end Sejf;
 	
 	device implementation Sejf.impl		
@@ -346,8 +398,7 @@ public
 		features
 			key_input: out data port Base_Types::Character;
 			
-			bus_access: requires bus access HwConnection;
-						
+			bus_access: requires bus access HwConnection;						
 	end Klawiatura;
 	
 	device implementation Klawiatura.impl		
@@ -356,12 +407,22 @@ public
 	device Wyswietlacz		
 		features
 			obraz_input: in data port Base_Types::String;
-			
-			bus_access: requires bus access HwConnection;
-			
+						
+			bus_access: requires bus access HwConnection;			
 	end Wyswietlacz;
 	
 	device implementation Wyswietlacz.impl
 	end Wyswietlacz.impl;
 		
+	device Modul_Lacznosci
+		features
+			dane_karty: in data port;
+			dane_konta: out data port;
+			
+			bus_access: requires bus access HwConnection;			
+	end Modul_Lacznosci;
+	
+	device implementation Modul_Lacznosci.impl
+	end Modul_Lacznosci.impl;
+	
 end Bankomat;
